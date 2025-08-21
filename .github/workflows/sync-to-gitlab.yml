@@ -1,0 +1,74 @@
+name: 同步 GitHub 到 GitLab（已验证 HTTPS 443 配置）
+on:
+  push:
+    branches: [ master, springboot3_sas, springboot3 ]
+    tags: [ '*' ]
+  workflow_dispatch:  # 支持手动触发
+
+jobs:
+  sync-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取 GitHub 代码（完整历史）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 必须为0，获取所有分支和标签
+
+      - name: 拉取所有 GitHub 分支
+        run: |
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*'
+          echo "已获取的 GitHub 分支："
+          git branch -r  # 调试用，确认分支存在
+
+      - name: 验证目标分支存在
+        run: |
+          BRANCHES=("master" "springboot3_sas" "springboot3")
+          for BRANCH in "${BRANCHES[@]}"; do
+            if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+              echo "✅ 分支 $BRANCH 存在，拉取到本地"
+              git checkout -B $BRANCH origin/$BRANCH
+            else
+              echo "❌ 分支 $BRANCH 不存在，跳过"
+              BRANCHES=("${BRANCHES[@]/$BRANCH}")
+            fi
+          done
+          echo "BRANCHES_TO_PUSH=${BRANCHES[*]}" >> $GITHUB_ENV
+
+      - name: 验证 GitLab 凭证（与测试命令匹配）
+        run: |
+          # 显示与测试命令一致的用户名前缀（xhj）和令牌前缀（glpat-b_）
+          echo "验证用户名：${USER:0:3}***"  # 应显示 xhj***
+          echo "验证令牌前缀：${TOKEN:0:7}***"  # 应显示 glpat-b_***
+        env:
+          USER: ${{ secrets.GITLAB_USERNAME }}
+          TOKEN: ${{ secrets.GITLAB_TOKEN }}
+
+      - name: 配置 Git 身份
+        run: |
+          git config --global user.name "${{ secrets.GITLAB_USERNAME }}"  # 对应 xhj
+          git config --global user.email "xiaohongjian1989@gmail.com"
+
+      - name: 添加 GitLab 远程地址（与测试命令完全一致）
+        run: |
+          # 地址格式与测试命令保持一致：https://<用户名>:<令牌>@git.yousen.plus:443/...
+          GITLAB_URL="https://${{ secrets.GITLAB_USERNAME }}:${{ secrets.GITLAB_TOKEN }}@git.yousen.plus:443/yousen/JeecgBoot.git"
+          git remote add gitlab "$GITLAB_URL"
+          echo "已添加 GitLab 远程地址（与测试命令一致）："
+          git remote -v  # 验证地址格式
+
+      - name: 推送分支到 GitLab
+        run: |
+          if [ -n "$BRANCHES_TO_PUSH" ]; then
+            echo "推送分支：$BRANCHES_TO_PUSH"
+            git push -u gitlab $BRANCHES_TO_PUSH --force
+          else
+            echo "无分支可推送"
+          fi
+
+      - name: 推送标签到 GitLab
+        run: |
+          if git tag | grep -q .; then
+            git push gitlab --tags --force
+          else
+            echo "无标签可推送"
+          fi
