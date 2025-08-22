@@ -4,6 +4,8 @@ on:
     branches: [ master, springboot3_sas, springboot3 ]
     tags: [ '*' ]
   workflow_dispatch:  # 支持手动触发
+  schedule:
+    - cron: '0 16 * * *'  # 每天北京时间凌晨0点运行（UTC时间16点，UTC+8=北京时间）
 
 jobs:
   sync-code:
