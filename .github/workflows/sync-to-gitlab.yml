@@ -53,7 +53,7 @@ jobs:
       - name: 添加 GitLab 远程地址（与测试命令完全一致）
         run: |
           # 地址格式与测试命令保持一致：https://<用户名>:<令牌>@git.yousen.plus:443/...
-          GITLAB_URL="https://${{ secrets.GITLAB_USERNAME }}:${{ secrets.GITLAB_TOKEN }}@git.yousen.plus:443/yousen/JeecgBoot.git"
+          GITLAB_URL="https://${{ secrets.GITLAB_USERNAME }}:${{ secrets.GITLAB_TOKEN }}@git.yousen.plus:443/yousen/yousen-framework.git"
           git remote add gitlab "$GITLAB_URL"
           echo "已添加 GitLab 远程地址（与测试命令一致）："
           git remote -v  # 验证地址格式
